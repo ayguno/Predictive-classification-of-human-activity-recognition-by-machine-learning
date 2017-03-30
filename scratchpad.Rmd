@@ -1,0 +1,133 @@
+---
+title: "This is just the scratchpad for the analysis not the final report"
+author: "Ozan Aygun"
+date: "3/30/2017"
+output: html_document
+---
+
+Download the data sets:
+
+```{r,results='markup',eval=FALSE}
+
+fileURLTrain <- "https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv"
+
+fileURLTest <- "https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv"
+
+download.file(fileURLTrain,"train.csv")
+download.file(fileURLTest,"test.csv")
+```
+
+Load the datasets:
+
+```{r,results='markup'}
+training <- read.csv("train.csv")
+final_testing <- read.csv("test.csv")
+```
+
+Understand the variables:
+
+```{r,results='markup'}
+nameframe <- data.frame(names(training),names(final_testing))
+```
+
+We notice that the **classe** variable is the outcome variable representing: exactly according to the specification (Class A), throwing the elbows to the front (Class B), lifting the dumbbell only halfway (Class C), lowering the dumbbell only halfway (Class D) and throwing the hips to the front (Class E).
+
+Class A corresponds to the specified execution of the exercise, while the other 4 classes correspond to common mistakes.
+
+We will use the training set to build a predictive model in order to classify the cases in the final_test set.
+
+# Partitioning the training data set
+
+It would be useful to partition the training set into:
+
+- building: actual model building set
+- tune.testing: testing set for tuning the build models
+- validation: for one-time evaluation of the model performance
+
+```{r,results='markup', message=FALSE,warning=FALSE,cache=TRUE}
+library(caret);library(ggplot2); set.seed(23445)
+INbuilding <- createDataPartition(y = training$classe,p=0.6,list = FALSE)
+building <- training[INbuilding,]
+
+rest <- training[-INbuilding,]
+
+INtune <- createDataPartition(y = rest$classe,p=0.5,list = FALSE)
+tune.testing <- rest[INtune,]
+validation <- rest[-INtune,]
+```
+
+# General preprocessing and EDA (all processing performed in the building set and exactly applied to tune.testing and validation sets)
+
+```{r,results='markup'}
+summary(building)
+
+# Decide what to do with the missing values
+apply(is.na(building),2,sum) #  11548 data points (98% of them) are consistently missing in 
+length(which(apply(is.na(building),2,sum)>0)) # 67 variables
+
+plot(building$classe[is.na(building$amplitude_pitch_forearm)]) # slightly more NA's in A class but #overall balanced distribution across the classes
+
+##########################################
+# STEP1: Drop the missing value containing variables as they are unlikely to add value to our #prediction (process the tune.testing and validation sets exactly in the same way )
+
+
+tune.testing <- tune.testing[,-which(apply(is.na(building),2,sum)>0)]
+validation <- validation[,-which(apply(is.na(building),2,sum)>0)]
+building <- building[,-which(apply(is.na(building),2,sum)>0)]
+##########################################
+
+
+# Find and remove near-zero variance variables
+nsv <- nearZeroVar(x = building, saveMetrics = TRUE)
+
+sum(!nsv$nzv) # 59 variables have non-zero variance and will be kept in the building set
+
+##########################################
+# STEP 2: Remove nzv variables, (process the tune.testing and validation sets exactly in the same way )
+
+tune.testing <- tune.testing[,!nsv$nzv]
+validation <- validation[,!nsv$nzv]
+building <- building[,!nsv$nzv]
+###########################################
+
+
+# Next, let's have a look at the correlation between the continuous variables
+cont <- !sapply(building,is.factor) # Continuous variables in the building set
+
+M <- abs(cor(building[,cont])) # M is an absolute value correlation matrix representing the pairwise #correlations between all continuous variables 
+diag(M) <- 0 # We replace the diagonal values with zero (just because these are the correations with  #themselves we are not interested in capturing them).
+which(M > 0.8, arr.ind = TRUE) # What are the highest correated variables?
+unique(row.names(which(M > 0.8, arr.ind = TRUE))) # We find that there are 18 highly correlated #predictiors in the data set
+qplot(building[,row.names(M)[7]],building[,colnames(M)[5]], color = classe, data = building)
+qplot(building[,row.names(M)[8]],building[,colnames(M)[5]], color = classe, data = building)
+plot(building[,row.names(M)[13]],building[,colnames(M)[5]])
+plot(building[,row.names(M)[15]],building[,colnames(M)[6]])
+plot(building[,row.names(M)[33]],building[,colnames(M)[40]])
+qplot(building[,row.names(M)[33]],building[,colnames(M)[40]], color = classe, data = building)
+
+cor.variables <- building[,unique(row.names(which(M > 0.8, arr.ind = TRUE)))]
+cor.variables$classe <- building$classe
+
+# We notice that the correlated predictors have already clusters within them. In this case, I will not #attempt further dimension reduction, because the data looks like suitable for classification #algorithms (rather than linear models)
+
+######################################################################
+# STEP3: Converting factor variables into dummy variables
+
+which(sapply(building[,-59],is.factor)) # Only two factor variables remained in the datasets
+# Note that one of them is a time stamp composed of 20 unique values. At this point we will model them as categorical variables
+factors <- which(sapply(building[,-59],is.factor))
+# Convert these variables into dummy variables:
+
+dummies <- dummyVars(classe ~ user_name + cvtd_timestamp, data = building)
+
+# Add them into building and all test and validation sets and drop the original factor variables
+
+building <- cbind(building[,-factors],predict(dummies,building))
+tune.testing <- cbind(tune.testing[,-factors],predict(dummies,tune.testing))
+validation <- cbind(validation[,-factors],predict(dummies,validation))
+```
+
+# Next we can start model building approaches
+
+
+
