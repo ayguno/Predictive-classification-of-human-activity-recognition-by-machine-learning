@@ -56,7 +56,7 @@ tune.testing <- rest[INtune,]
 validation <- rest[-INtune,]
 ```
 
-# General preprocessing and EDA (all processing performed in the building set and exactly applied to tune.testing and validation sets)
+# General preprocessing and EDA (all processing performed in the building set and exactly applied to tune.testing,validation, and final_testing sets)
 
 ```{r,results='markup'}
 summary(building)
@@ -68,11 +68,12 @@ length(which(apply(is.na(building),2,sum)>0)) # 67 variables
 plot(building$classe[is.na(building$amplitude_pitch_forearm)]) # slightly more NA's in A class but #overall balanced distribution across the classes
 
 ##########################################
-# STEP1: Drop the missing value containing variables as they are unlikely to add value to our #prediction (process the tune.testing and validation sets exactly in the same way )
+# STEP1: Drop the missing value containing variables as they are unlikely to add value to our #prediction (process the tune.testing, validation, final_testing sets exactly in the same way )
 
 
 tune.testing <- tune.testing[,-which(apply(is.na(building),2,sum)>0)]
 validation <- validation[,-which(apply(is.na(building),2,sum)>0)]
+final_testing <- final_testing[,-which(apply(is.na(building),2,sum)>0)]
 building <- building[,-which(apply(is.na(building),2,sum)>0)]
 ##########################################
 
@@ -83,10 +84,11 @@ nsv <- nearZeroVar(x = building, saveMetrics = TRUE)
 sum(!nsv$nzv) # 59 variables have non-zero variance and will be kept in the building set
 
 ##########################################
-# STEP 2: Remove nzv variables, (process the tune.testing and validation sets exactly in the same way )
+# STEP 2: Remove nzv variables, (process the tune.testing, validation and final_testing sets exactly in the same way #)
 
 tune.testing <- tune.testing[,!nsv$nzv]
 validation <- validation[,!nsv$nzv]
+final_testing <- final_testing[,!nsv$nzv]
 building <- building[,!nsv$nzv]
 ###########################################
 
@@ -108,7 +110,15 @@ qplot(building[,row.names(M)[33]],building[,colnames(M)[40]], color = classe, da
 cor.variables <- building[,unique(row.names(which(M > 0.8, arr.ind = TRUE)))]
 cor.variables$classe <- building$classe
 
-# We notice that the correlated predictors have already clusters within them. In this case, I will not #attempt further dimension reduction, because the data looks like suitable for classification #algorithms (rather than linear models)
+# Performing PCA to see if dimension reduction might help to resolve classes
+prePCA <- preProcess(cor.variables[,-19],method = "pca")
+PCAcor <- predict(prePCA,cor.variables[,-19])
+qplot(PCAcor$PC1,PCAcor$PC2, color = classe, data = cor.variables)
+qplot(PCAcor$PC1,PCAcor$PC3, color = classe, data = cor.variables)
+qplot(PCAcor$PC2,PCAcor$PC3, color = classe, data = cor.variables)
+# Not much obvious advantage gained by calculating principal components to seperate classes
+
+# We notice that the correlated predictors have already clusters within them. In this case, I will not #attempt #further dimension reduction, because the data looks like suitable for classification algorithms (rather than linear #models)
 
 ######################################################################
 # STEP3: Converting factor variables into dummy variables
@@ -122,12 +132,41 @@ dummies <- dummyVars(classe ~ user_name + cvtd_timestamp, data = building)
 
 # Add them into building and all test and validation sets and drop the original factor variables
 
+
 building <- cbind(building[,-factors],predict(dummies,building))
 tune.testing <- cbind(tune.testing[,-factors],predict(dummies,tune.testing))
 validation <- cbind(validation[,-factors],predict(dummies,validation))
+names(final_testing)[59] <- "classe" # Names in newdata should match the object to use predict
+final_testing <- cbind(final_testing[,-factors],predict(dummies,final_testing))
+
 ```
 
-# Next we can start model building approaches
+This concludes data pre-processing and exploratory data analysis. Only the building set was used to perform exploration, then all 4 sets were processed exactly in the same way.
 
+# Next we can start model building approaches using the building set
 
+Since this is a classification problem and there are clear non-linear trends/structures/clusters in the data, I will perform tree-based prediction algorithms and support vector machines to perform predictions.
+
+Individual classifiers:
+
+- Simple classification tree (method = "rpart") with cross validation
+- Random Forest (method = "cv") with cross validation
+- Boosted tree (method = "gbm") with cross validation
+- support vector machines
+
+Stacked classifiers:
+
+- I will assemble all possible combinations of the above models:
+
+This approach below will help me to build all these combinatorial models within a loop:
+```{r,results='markup'}
+library(combinat)
+
+lsmod = list ("rpart","gbm","rf","svm")
+lsmod.combin = list(combn(lsmod,2),combn(lsmod,3),combn(lsmod,4)) # each column makes a prediction model fit
+```
+
+- I will plan to use at least 2 stacking methods: "gamBoost" and "gam"
+
+Then I will perform testing and validation.
 
