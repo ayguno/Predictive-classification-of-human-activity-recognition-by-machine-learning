@@ -147,9 +147,13 @@ This concludes data pre-processing and exploratory data analysis. Only the build
 
 Since this is a classification problem and there are clear non-linear trends/structures/clusters in the data, I will perform tree-based prediction algorithms and support vector machines to perform predictions.
 
-Individual classifiers:
+# Individual classifiers:
 
 - Simple classification tree (method = "rpart") with cross validation
+
+
+
+
 - Random Forest (method = "cv") with cross validation
 - Boosted tree (method = "gbm") with cross validation
 - support vector machines
