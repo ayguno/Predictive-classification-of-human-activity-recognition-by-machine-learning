@@ -146,6 +146,7 @@ final_testing <- cbind(final_testing[,-factors],predict(dummies,final_testing))
 
 # We notice that the variable X is just an indexing variable that can perfectly seperate the classes
 qplot(X,classe,data = building,color = classe)+theme_bw()
+
 # Such a variable has no real predictive power because the real samples will not be ordered based on such index
 # Therefore, we remove the variable X from all sets before building the models:
 
