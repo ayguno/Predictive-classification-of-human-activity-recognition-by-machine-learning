@@ -180,8 +180,19 @@ GBM <- train(classe ~ ., data = building,method = "gbm", trControl = trainContro
 saveRDS(GBM,"GBM.rds") #Save model object for future loading if necessary
 ```
 
-- support vector machines
+- support vector machines with a radial kernel
 
+```{r,results='markup', message=FALSE,warning=FALSE, cache=TRUE}
+SVM <- train(classe ~ ., data = building,method = "svmRadial", trControl = trainControl(method = "cv", number = 10))
+```
+
+
+# Reading back the earlier classifiers
+```{r,results='markup'}
+RPART = readRDS("RPART.rds")
+RF = readRDS("RF.rds")
+GBM = readRDS("GBM.rds")
+```
 
 
 Stacked classifiers:
