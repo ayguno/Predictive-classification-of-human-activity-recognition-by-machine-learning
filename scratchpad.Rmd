@@ -9,12 +9,12 @@ Download the data sets:
 
 ```{r,results='markup',eval=FALSE}
 
-fileURLTrain <- "https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv"
-
-fileURLTest <- "https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv"
-
-download.file(fileURLTrain,"train.csv")
-download.file(fileURLTest,"test.csv")
+# fileURLTrain <- "https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv"
+# 
+# fileURLTest <- "https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv"
+# 
+# download.file(fileURLTrain,"train.csv")
+# download.file(fileURLTest,"test.csv")
 ```
 
 Load the datasets:
@@ -139,6 +139,12 @@ validation <- cbind(validation[,-factors],predict(dummies,validation))
 names(final_testing)[59] <- "classe" # Names in newdata should match the object to use predict
 final_testing <- cbind(final_testing[,-factors],predict(dummies,final_testing))
 
+# Finally legitimize the names of the variables: (needed for the classification algorithms to run #smoothly)
+
+names(building) <- make.names(names(building))
+names(tune.testing) <- make.names(names(tune.testing))
+names(validation) <- make.names(names(validation))
+names(final_testing) <- make.names(names(final_testing))
 ```
 
 This concludes data pre-processing and exploratory data analysis. Only the building set was used to perform exploration, then all 4 sets were processed exactly in the same way.
@@ -151,12 +157,28 @@ Since this is a classification problem and there are clear non-linear trends/str
 
 - Simple classification tree (method = "rpart") with cross validation
 
-
-
+```{r,results='markup', message=FALSE,warning=FALSE, cache=TRUE}
+set.seed(125745)
+RPART <- train(classe ~ ., data = building,method = "rpart", trControl = trainControl(method = "cv", number = 9))
+```
 
 - Random Forest (method = "cv") with cross validation
+
+```{r,results='markup', message=FALSE,warning=FALSE, cache=TRUE}
+set.seed(125745)
+RF <- train(classe ~ ., data = building,method = "rf", trControl = trainControl(method = "cv", number = 10)) # Takes very long time to run!!
+```
+
 - Boosted tree (method = "gbm") with cross validation
+
+```{r,results='markup', message=FALSE,warning=FALSE, cache=TRUE}
+set.seed(125745)
+GBM <- train(classe ~ ., data = building,method = "gbm", trControl = trainControl(method = "cv", number = 10), verbose = FALSE) # Takes very long time to run!!
+```
+
 - support vector machines
+
+
 
 Stacked classifiers:
 
