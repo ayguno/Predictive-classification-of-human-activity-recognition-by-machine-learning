@@ -27,7 +27,7 @@ final_testing <- read.csv("test.csv")
 Understand the variables:
 
 ```{r,results='markup'}
-nameframe <- data.frame(names(training),names(final_testing))
+#nameframe <- data.frame(names(training),names(final_testing))
 ```
 
 We notice that the **classe** variable is the outcome variable representing: exactly according to the specification (Class A), throwing the elbows to the front (Class B), lifting the dumbbell only halfway (Class C), lowering the dumbbell only halfway (Class D) and throwing the hips to the front (Class E).
@@ -67,7 +67,7 @@ length(which(apply(is.na(building),2,sum)>0)) # 67 variables
 
 plot(building$classe[is.na(building$amplitude_pitch_forearm)]) # slightly more NA's in A class but #overall balanced distribution across the classes
 
-##########################################
+##################################################################################################
 # STEP1: Drop the missing value containing variables as they are unlikely to add value to our #prediction (process the tune.testing, validation, final_testing sets exactly in the same way )
 
 
@@ -75,7 +75,7 @@ tune.testing <- tune.testing[,-which(apply(is.na(building),2,sum)>0)]
 validation <- validation[,-which(apply(is.na(building),2,sum)>0)]
 final_testing <- final_testing[,-which(apply(is.na(building),2,sum)>0)]
 building <- building[,-which(apply(is.na(building),2,sum)>0)]
-##########################################
+##################################################################################################
 
 
 # Find and remove near-zero variance variables
@@ -83,16 +83,18 @@ nsv <- nearZeroVar(x = building, saveMetrics = TRUE)
 
 sum(!nsv$nzv) # 59 variables have non-zero variance and will be kept in the building set
 
-##########################################
+##################################################################################################
 # STEP 2: Remove nzv variables, (process the tune.testing, validation and final_testing sets exactly in the same way #)
 
 tune.testing <- tune.testing[,!nsv$nzv]
 validation <- validation[,!nsv$nzv]
 final_testing <- final_testing[,!nsv$nzv]
 building <- building[,!nsv$nzv]
-###########################################
-
-
+##################################################################################################
+#                                       
+#                                        EDA
+#
+##################################################################################################
 # Next, let's have a look at the correlation between the continuous variables
 cont <- !sapply(building,is.factor) # Continuous variables in the building set
 
@@ -120,7 +122,7 @@ qplot(PCAcor$PC2,PCAcor$PC3, color = classe, data = cor.variables)
 
 # We notice that the correlated predictors have already clusters within them. In this case, I will not #attempt #further dimension reduction, because the data looks like suitable for classification algorithms (rather than linear #models)
 
-######################################################################
+##################################################################################################
 # STEP3: Converting factor variables into dummy variables
 
 which(sapply(building[,-59],is.factor)) # Only two factor variables remained in the datasets
@@ -139,7 +141,21 @@ validation <- cbind(validation[,-factors],predict(dummies,validation))
 names(final_testing)[59] <- "classe" # Names in newdata should match the object to use predict
 final_testing <- cbind(final_testing[,-factors],predict(dummies,final_testing))
 
-# Finally legitimize the names of the variables: (needed for the classification algorithms to run #smoothly)
+##################################################################################################
+# STEP4: Eliminating the bias from the indexing variable X
+
+# We notice that the variable X is just an indexing variable that can perfectly seperate the classes
+qplot(X,classe,data = building,color = classe)+theme_bw()
+# Such a variable has no real predictive power because the real samples will not be ordered based on such index
+# Therefore, we remove the variable X from all sets before building the models:
+
+building <- subset(building,select = -c(X))
+tune.testing <- subset(tune.testing,select = -c(X))
+validation <- subset(validation,select = -c(X))
+final_testing <- subset(final_testing,select = -c(X))
+
+##########################################################################
+# STEP5 :Finally legitimize the names of the variables: (needed for the classification algorithms to run #smoothly)
 
 names(building) <- make.names(names(building))
 names(tune.testing) <- make.names(names(tune.testing))
@@ -159,7 +175,7 @@ Since this is a classification problem and there are clear non-linear trends/str
 
 ```{r,results='markup', message=FALSE,warning=FALSE, cache=TRUE}
 set.seed(125745)
-RPART <- train(classe ~ ., data = building,method = "rpart", trControl = trainControl(method = "cv", number = 9))
+RPART <- train(classe ~ ., data = building,method = "rpart", trControl = trainControl(method = "cv", number = 10))
 saveRDS(RPART,"RPART.rds") #Save model object for future loading if necessary
 ```
 
@@ -183,15 +199,26 @@ saveRDS(GBM,"GBM.rds") #Save model object for future loading if necessary
 - support vector machines with a radial kernel
 
 ```{r,results='markup', message=FALSE,warning=FALSE, cache=TRUE}
+set.seed(125745)
 SVM <- train(classe ~ ., data = building,method = "svmRadial", trControl = trainControl(method = "cv", number = 10))
+# Takes very long time to run!!
+saveRDS(SVM,"SVM.rds")
 ```
 
 
-# Reading back the earlier classifiers
+# Reading back the earlier classifiers when needed to work with them
 ```{r,results='markup'}
-RPART = readRDS("RPART.rds")
-RF = readRDS("RF.rds")
-GBM = readRDS("GBM.rds")
+# RPART = readRDS("RPART.rds")
+# RF = readRDS("RF.rds")
+# GBM = readRDS("GBM.rds")
+# SVM = readRDS("SVM.rds")
+```
+
+# Summarizing the initial results from the individual classifiers
+```{r,results='markup', message=FALSE,warning=FALSE, cache=TRUE}
+# Using resamples function from the caret package
+dotPlot(varImp(RPART))
+plot(building$X,building$classe)
 ```
 
 
