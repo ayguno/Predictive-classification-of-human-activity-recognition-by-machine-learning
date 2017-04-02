@@ -252,11 +252,12 @@ tune.testing.accuracy <- apply(tune.testing.predictions, 2, function(x){
         return(temp)
 })
 
-
 ```
+Based on the prediction in the tune.testing set, Random Forest classification tree gave the highest accuracy. The accuracy is remarkable. Boosted tree also gave a comparable accuracy.
 
+# Stacked classifiers:
 
-Stacked classifiers:
+At this stage I will carry over the predictions of the individual models above and see if I can stack some combinations of these models to see if we can further improve the accuracy.
 
 - I will assemble all possible combinations of the above models:
 
@@ -264,8 +265,18 @@ This approach below will help me to build all these combinatorial models within 
 ```{r,results='markup'}
 library(combinat)
 
-lsmod = list ("rpart","gbm","rf","svm")
+lsmod = list ("RPART","GBM","RF","SVM")
 lsmod.combin = list(combn(lsmod,2),combn(lsmod,3),combn(lsmod,4)) # each column makes a prediction model fit
+
+tune.testing.predictions$classe <- tune.testing$classe
+
+# Note evaluated models below yet:
+
+stacked.model.rf <- train(classe ~ ., method = "rf", data = tune.testing.predictions,trControl = trainControl(method = "cv", number = 10) )
+
+stacked.model.svm <- train(classe ~ ., method = "svm", data = tune.testing.predictions,trControl = trainControl(method = "cv", number = 10) )
+
+stacked.model.gbm <- train(classe ~ ., method = "gbm", data = tune.testing.predictions,trControl = trainControl(method = "cv", number = 10) )
 ```
 
 - I will plan to use the stacking method: "gam"
