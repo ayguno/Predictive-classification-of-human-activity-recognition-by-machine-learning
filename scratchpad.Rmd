@@ -287,8 +287,53 @@ stacked.model.rf <- train(classe ~ ., method = "rf", data = tune.testing.predict
 stacked.model.svm <- train(classe ~ ., method = "svmRadial", data = tune.testing.predictions,trControl = trainControl(method = "cv", number = 10) )
 
 stacked.model.gbm <- train(classe ~ ., method = "gbm", data = tune.testing.predictions,trControl = trainControl(method = "cv", number = 10) )
+
+
+# Using resamples function from the caret package to summarize the data
+
+stacked.modelsummary <- resamples(list(RPART=stacked.model.rpart,RF=stacked.model.rf,GBM=stacked.model.gbm ,SVM=stacked.model.svm))
+
+# In-sample accuracy values for each model
+summary(stacked.modelsummary)$statistics$Accuracy
+
 ```
 
 
 Then I will perform one-time out of the sample validation by using the validation data set:
+
+# Making predictions by using all classifiers and validation set
+
+
+```{r,results= 'markup', message=FALSE,warning=FALSE, cache=TRUE}
+
+# Individual model fits
+pred.validation.RPART <- predict(RPART,newdata = validation)
+pred.validation.RF <- predict(RF,newdata = validation)
+pred.validation.SVM <- predict(SVM,newdata = validation)
+pred.validation.GBM <- predict(GBM,newdata = validation)
+
+# Stacked model fits
+
+pred.validation.Stacked.RPART <- predict(stacked.model.rpart,newdata = validation)
+pred.validation.Stacked.RF <- predict(stacked.model.rf,newdata = validation)
+pred.validation.Stacked.SVM <- predict(stacked.model.svm,newdata = validation)
+pred.validation.Stacked.GBM <- predict(stacked.model.gbm,newdata = validation)
+
+
+
+# Collect accuracy values in a data.frame:
+
+validation.predictions <-data.frame(pred.validation.RPART,pred.validation.RF,pred.validation.SVM,pred.validation.GBM,pred.validation.Stacked.RPART,pred.validation.Stacked.RF,pred.validation.Stacked.SVM,pred.validation.Stacked.GBM)
+
+validation.accuracy <- apply(validation.predictions, 2, function(x){
+        temp=confusionMatrix(x,validation$classe)$overall[1]
+        names(temp) <- names(x)
+        return(temp)
+})
+
+```
+
+We found that the combinations of the individual models stacked by RF,SVM and GBM further increased the overall accuracy of the predictions. They provided the same level of overall accuracy:  0.9989804  
+
+We will perform the predictions on the final_testing data set by using the combined models:
 
