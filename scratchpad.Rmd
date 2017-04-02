@@ -275,10 +275,10 @@ Based on the prediction in the tune.testing set, Random Forest classification tr
 ```
 
 ```{r,results='markup', message=FALSE,warning=FALSE, cache=TRUE}
-
+set.seed(125745)
 tune.testing.predictions$classe <- tune.testing$classe
 
-# Note evaluated models below yet:
+
 
 stacked.model.rpart <- train(classe ~ ., method = "rpart", data = tune.testing.predictions,trControl = trainControl(method = "cv", number = 10) )
 
