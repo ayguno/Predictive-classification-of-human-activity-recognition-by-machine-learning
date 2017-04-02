@@ -299,6 +299,9 @@ summary(stacked.modelsummary)$statistics$Accuracy
 ```
 
 
+
+
+
 Then I will perform one-time out of the sample validation by using the validation data set:
 
 # Making predictions by using all classifiers and validation set
@@ -312,20 +315,27 @@ pred.validation.RF <- predict(RF,newdata = validation)
 pred.validation.SVM <- predict(SVM,newdata = validation)
 pred.validation.GBM <- predict(GBM,newdata = validation)
 
-# Stacked model fits
 
-pred.validation.Stacked.RPART <- predict(stacked.model.rpart,newdata = validation)
-pred.validation.Stacked.RF <- predict(stacked.model.rf,newdata = validation)
-pred.validation.Stacked.SVM <- predict(stacked.model.svm,newdata = validation)
-pred.validation.Stacked.GBM <- predict(stacked.model.gbm,newdata = validation)
+# Stacked model fits : needs to be updated:
+# First combine the predictions of the individual classifiers from the validation set:
+
+validation.predictions <-data.frame(pred.tune.RPART = pred.validation.RPART, 
+                                      pred.tune.RF = pred.validation.RF,
+                                      pred.tune.SVM=pred.validation.SVM,
+                                      pred.tune.GBM = pred.validation.GBM)
+
+pred.validation.Stacked.RPART <- predict(stacked.model.rpart,newdata = validation.predictions)
+pred.validation.Stacked.RF <- predict(stacked.model.rf,newdata = validation.predictions)
+pred.validation.Stacked.SVM <- predict(stacked.model.svm,newdata = validation.predictions)
+pred.validation.Stacked.GBM <- predict(stacked.model.gbm,newdata = validation.predictions)
 
 
 
 # Collect accuracy values in a data.frame:
 
-validation.predictions <-data.frame(pred.validation.RPART,pred.validation.RF,pred.validation.SVM,pred.validation.GBM,pred.validation.Stacked.RPART,pred.validation.Stacked.RF,pred.validation.Stacked.SVM,pred.validation.Stacked.GBM)
+collected.validation.predictions<-data.frame(pred.validation.RPART,pred.validation.RF,pred.validation.SVM,pred.validation.GBM,pred.validation.Stacked.RPART,pred.validation.Stacked.RF,pred.validation.Stacked.SVM,pred.validation.Stacked.GBM)
 
-validation.accuracy <- apply(validation.predictions, 2, function(x){
+validation.accuracy <- apply(collected.validation.predictions, 2, function(x){
         temp=confusionMatrix(x,validation$classe)$overall[1]
         names(temp) <- names(x)
         return(temp)
@@ -333,7 +343,13 @@ validation.accuracy <- apply(validation.predictions, 2, function(x){
 
 ```
 
-We found that the combinations of the individual models stacked by RF,SVM and GBM further increased the overall accuracy of the predictions. They provided the same level of overall accuracy:  0.9989804  
+We found that the combinations of the individual models stacked by SVM and GBM further increased the overall accuracy of the predictions. However, they did not go beyond the accuracy level of RF function. 
 
-We will perform the predictions on the final_testing data set by using the combined models:
+We will perform the predictions on the final_testing data set by using the stand alone RF model:
+
+```{r,results= 'markup', message=FALSE,warning=FALSE, cache=TRUE}
+final.prediction.RF <- predict(RF,newdata = final_testing)
+# This provides the correct prediction as confirmed by the quiz results!!
+# [1] B A B A A E D B A A B C B A E E A B B B
+```
 
