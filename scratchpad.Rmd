@@ -61,6 +61,8 @@ validation <- rest[-INtune,]
 ```{r,results='markup'}
 summary(building)
 
+table(building$classe) # Classes are slightly unbalanced, we have more class A.
+
 # Decide what to do with the missing values
 apply(is.na(building),2,sum) #  11548 data points (98% of them) are consistently missing in 
 length(which(apply(is.na(building),2,sum)>0)) # 67 variables
@@ -209,17 +211,48 @@ saveRDS(SVM,"SVM.rds")
 
 # Reading back the earlier classifiers when needed to work with them
 ```{r,results='markup'}
-# RPART = readRDS("RPART.rds")
-# RF = readRDS("RF.rds")
-# GBM = readRDS("GBM.rds")
-# SVM = readRDS("SVM.rds")
+ RPART = readRDS("RPART.rds")
+ RF = readRDS("RF.rds")
+ GBM = readRDS("GBM.rds")
+ SVM = readRDS("SVM.rds")
 ```
 
 # Summarizing the initial results from the individual classifiers
 ```{r,results='markup', message=FALSE,warning=FALSE, cache=TRUE}
-# Using resamples function from the caret package
+# Using resamples function from the caret package to summarize the data
+
+modelsummary <- resamples(list(RPART=RPART,RF=RF,GBM=GBM,SVM=SVM))
+
+# In-sample accuracy values for each model
+summary(modelsummary)$statistics$Accuracy
+
+# If necessary we can also produce 'variable importance' plots to see which variables are making most contributions #to each model
 dotPlot(varImp(RPART))
-plot(building$X,building$classe)
+dotPlot(varImp(RF))
+dotPlot(varImp(SVM))
+dotPlot(varImp(GBM))
+```
+
+# Making predictions by using the classifiers and tune.testing set
+
+```{r,results= 'markup', message=FALSE,warning=FALSE, cache=TRUE}
+
+pred.tune.RPART <- predict(RPART,newdata = tune.testing)
+pred.tune.RF <- predict(RF,newdata = tune.testing)
+pred.tune.SVM <- predict(SVM,newdata = tune.testing)
+pred.tune.GBM <- predict(GBM,newdata = tune.testing)
+
+# Collect accuracy values in a data.frame:
+
+tune.testing.predictions <-data.frame(pred.tune.RPART,pred.tune.RF,pred.tune.SVM,pred.tune.GBM)
+
+tune.testing.accuracy <- apply(tune.testing.predictions, 2, function(x){
+        temp=confusionMatrix(x,tune.testing$classe)$overall[1]
+        names(temp) <- names(x)
+        return(temp)
+})
+
+
 ```
 
 
@@ -235,7 +268,7 @@ lsmod = list ("rpart","gbm","rf","svm")
 lsmod.combin = list(combn(lsmod,2),combn(lsmod,3),combn(lsmod,4)) # each column makes a prediction model fit
 ```
 
-- I will plan to use at least 2 stacking methods: "gamBoost" and "gam"
+- I will plan to use the stacking method: "gam"
 
-Then I will perform testing and validation.
+Then I will perform validation.
 
