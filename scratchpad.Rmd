@@ -257,29 +257,38 @@ Based on the prediction in the tune.testing set, Random Forest classification tr
 
 # Stacked classifiers:
 
-At this stage I will carry over the predictions of the individual models above and see if I can stack some combinations of these models to see if we can further improve the accuracy.
 
-- I will assemble all possible combinations of the above models:
-
-This approach below will help me to build all these combinatorial models within a loop:
 ```{r,results='markup'}
-library(combinat)
+# At this stage I will carry over the predictions of the individual models above and see if I can stack some #combinations of these models to see if we can further improve the accuracy.
+# 
+# - I will assemble all possible combinations of the above models:
+# 
+# This approach below will help me to build all these combinatorial models within a loop:
 
-lsmod = list ("RPART","GBM","RF","SVM")
-lsmod.combin = list(combn(lsmod,2),combn(lsmod,3),combn(lsmod,4)) # each column makes a prediction model fit
+
+# library(combinat)
+# 
+# lsmod = list ("RPART","GBM","RF","SVM")
+# lsmod.combin = list(combn(lsmod,2),combn(lsmod,3),combn(lsmod,4)) # each column makes a prediction model fit
+########################################################
+
+```
+
+```{r,results='markup', message=FALSE,warning=FALSE, cache=TRUE}
 
 tune.testing.predictions$classe <- tune.testing$classe
 
 # Note evaluated models below yet:
 
+stacked.model.rpart <- train(classe ~ ., method = "rpart", data = tune.testing.predictions,trControl = trainControl(method = "cv", number = 10) )
+
 stacked.model.rf <- train(classe ~ ., method = "rf", data = tune.testing.predictions,trControl = trainControl(method = "cv", number = 10) )
 
-stacked.model.svm <- train(classe ~ ., method = "svm", data = tune.testing.predictions,trControl = trainControl(method = "cv", number = 10) )
+stacked.model.svm <- train(classe ~ ., method = "svmRadial", data = tune.testing.predictions,trControl = trainControl(method = "cv", number = 10) )
 
 stacked.model.gbm <- train(classe ~ ., method = "gbm", data = tune.testing.predictions,trControl = trainControl(method = "cv", number = 10) )
 ```
 
-- I will plan to use the stacking method: "gam"
 
-Then I will perform validation.
+Then I will perform one-time out of the sample validation by using the validation data set:
 
