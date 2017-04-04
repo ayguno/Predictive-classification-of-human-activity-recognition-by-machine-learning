@@ -52,6 +52,26 @@ validation <- rest[-INtune,]
 
 # Data cleaning, dimension reduction and exploratory analysis
 
+** All data processing and exploration initially performed in the building set, then exactly applied to tune.testing,validation, and final_testing sets with the same parameters.**
+
+## STEP1: Handling missing values
+
+Note that classes are slightly unbalanced, we have more of class A.
+
+```{r,results='markup', message=FALSE,warning=FALSE,cache=TRUE}
+table(building$classe) 
+apply(is.na(building),2,sum)
+length(which(apply(is.na(building),2,sum)>0)) 
+```
+
+Note that 11548 data points (98% of them) are consistently missing in 67 variables. 
+
+```{r,results='markup', message=FALSE,warning=FALSE,cache=TRUE}
+table(building$classe[is.na(building$amplitude_pitch_forearm)])/table(building$classe) 
+```
+The missing values seem to be balanced between the classes, similar fraction of classes are contained in missing values.
+
+
 
 # Model training, testing and stacking
 
