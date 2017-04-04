@@ -273,7 +273,7 @@ stacked.model.rf <- train(classe ~ ., method = "rf", data = tune.testing.predict
 
 stacked.model.svm <- train(classe ~ ., method = "svmRadial", data = tune.testing.predictions,trControl = trainControl(method = "cv", number = 10) )
 
-stacked.model.gbm <- train(classe ~ ., method = "gbm", data = tune.testing.predictions,trControl = trainControl(method = "cv", number = 10) )
+stacked.model.gbm <- train(classe ~ ., method = "gbm", data = tune.testing.predictions,trControl = trainControl(method = "cv", number = 10), verbose = FALSE )
 
 
 # Using resamples function from the caret package to summarize the data
@@ -283,6 +283,9 @@ stacked.modelsummary <- resamples(list(RPART=stacked.model.rpart,RF=stacked.mode
 summary(stacked.modelsummary)$statistics$Accuracy
 
 ```
+
+## Making independent predictions by using all individual and stacked classifiers and the validation set
+
 
 
 # Final model validation: prediction of 20 test cases
