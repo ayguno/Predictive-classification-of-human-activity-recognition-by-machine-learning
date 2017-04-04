@@ -163,10 +163,16 @@ validation <- subset(validation,select = -c(X))
 final_testing <- subset(final_testing,select = -c(X))
 ```
 
+## STEP5 : legitimize the feature names
 
+When performing feature creation, particularly for the creation of the dummy variables, we generated complex feature names. The classification algorithms in R can not handle such comples feature names that contains special characters such as **"/"**. Therefore, we legitimize all feature names before model training:
 
-
-
+```{r,results='markup', message=FALSE,warning=FALSE,cache=TRUE, fig.align='center'}
+names(building) <- make.names(names(building))
+names(tune.testing) <- make.names(names(tune.testing))
+names(validation) <- make.names(names(validation))
+names(final_testing) <- make.names(names(final_testing))
+```
 
 # Model training, testing and stacking
 
