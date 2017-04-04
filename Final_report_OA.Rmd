@@ -254,5 +254,35 @@ print(tune.testing.accuracy )
 ```
 Based on the independent prediction in the tune.testing set, Random Forest classification tree gave the highest accuracy. The accuracy is remarkable (0.9989). Boosted tree also gave a comparable accuracy.
 
+## Stacking and blending the classifiers
+
+At this stage we will carry over the predictions of the individual models above and see if we can stack combinations of these models to further improve the accuracy.
+
+To this end, we will combine each classifier we built above, by using the 4 classification algorithms we used. 
+
+```{r,results='markup', message=FALSE,warning=FALSE, cache=TRUE}
+
+# Add the outcome variable to the tune.testing predictions of the individual classifiers above
+set.seed(125745)
+tune.testing.predictions$classe <- tune.testing$classe
+
+# Train stacked classifiers by using 4 algorithms using the tune.testing predictions data set
+stacked.model.rpart <- train(classe ~ ., method = "rpart", data = tune.testing.predictions,trControl = trainControl(method = "cv", number = 10) )
+
+stacked.model.rf <- train(classe ~ ., method = "rf", data = tune.testing.predictions,trControl = trainControl(method = "cv", number = 10) )
+
+stacked.model.svm <- train(classe ~ ., method = "svmRadial", data = tune.testing.predictions,trControl = trainControl(method = "cv", number = 10) )
+
+stacked.model.gbm <- train(classe ~ ., method = "gbm", data = tune.testing.predictions,trControl = trainControl(method = "cv", number = 10) )
+
+
+# Using resamples function from the caret package to summarize the data
+stacked.modelsummary <- resamples(list(RPART=stacked.model.rpart,RF=stacked.model.rf,GBM=stacked.model.gbm ,SVM=stacked.model.svm))
+
+# In-sample accuracy values for each model
+summary(stacked.modelsummary)$statistics$Accuracy
+
+```
+
 
 # Final model validation: prediction of 20 test cases
