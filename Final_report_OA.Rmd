@@ -10,7 +10,48 @@ output: html_document
 
 # Data loading and partitioning
 
+Download the data sets:
+
+```{r,results='markup',eval=FALSE}
+fileURLTrain <- "https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv"
+fileURLTest <- "https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv"
+download.file(fileURLTrain,"train.csv")
+download.file(fileURLTest,"test.csv")
+```
+
+Load the datasets:
+
+```{r,results='markup',eval=FALSE}
+training <- read.csv("train.csv")
+final_testing <- read.csv("test.csv")
+```
+
+Understanding the classes:
+
+Based on the original data description, we notice that the **classe** variable is the outcome variable representing: exactly according to the specification (Class A), throwing the elbows to the front (Class B), lifting the dumbbell only halfway (Class C), lowering the dumbbell only halfway (Class D) and throwing the hips to the front (Class E). Class A corresponds to the specified execution of the exercise, while the other 4 classes correspond to common mistakes.
+
+We will use the training set to build a predictive model in order to classify the cases in the final_testing set.
+
+We therefore partition the **training set** into:
+
+- **building**: actual model building set
+- **tune.testing**: testing set for tuning the build models
+- **validation**: for one-time evaluation of the model performance
+
+```{r,results='markup', message=FALSE,warning=FALSE,cache=TRUE}
+library(caret);library(ggplot2); set.seed(23445)
+INbuilding <- createDataPartition(y = training$classe,p=0.6,list = FALSE)
+building <- training[INbuilding,]
+
+rest <- training[-INbuilding,]
+
+INtune <- createDataPartition(y = rest$classe,p=0.5,list = FALSE)
+tune.testing <- rest[INtune,]
+validation <- rest[-INtune,]
+```
+
 # Data cleaning, dimension reduction and exploratory analysis
+
 
 # Model training, testing and stacking
 
