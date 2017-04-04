@@ -127,6 +127,47 @@ qplot(PCAcor$PC1,PCAcor$PC2, color = classe, data = cor.variables) +theme_bw()
 
 We concluded that there is no obvious advantage gained by calculating principal components for the collinear features. Importantly, we notice that the correlated predictors have already clusters within them. In this case, we will not attempt further dimension reduction, because the data looks like suitable for classification algorithms (rather than linear models).
 
+## STEP3: Feature engineering
+
+Converting factor variables into dummy variables. 
+
+```{r,results='markup', message=FALSE,warning=FALSE,cache=TRUE, fig.align='center'}
+which(sapply(building[,-59],is.factor)) # Only two factor variables remained in the datasets
+# Note that one of them is a time stamp composed of 20 unique values. At this point we will model them as #categorical variables
+factors <- which(sapply(building[,-59],is.factor))
+# Convert these variables into dummy variables:
+dummies <- dummyVars(classe ~ user_name + cvtd_timestamp, data = building)
+
+# Add them into building and all test and validation sets and drop the original factor variables
+building <- cbind(building[,-factors],predict(dummies,building))
+tune.testing <- cbind(tune.testing[,-factors],predict(dummies,tune.testing))
+validation <- cbind(validation[,-factors],predict(dummies,validation))
+names(final_testing)[59] <- "classe" # Names in newdata should match the object to use predict( ) function
+final_testing <- cbind(final_testing[,-factors],predict(dummies,final_testing))
+```
+
+## STEP4: Eliminating the bias from the indexing variable X
+
+We notice that the variable X is just an indexing variable that can *perfectly* seperate the classes:
+
+```{r,results='markup', message=FALSE,warning=FALSE,cache=TRUE, fig.align='center'}
+qplot(X,classe,data = building,color = classe)+theme_bw()
+```
+
+Such a variable has no real predictive power because the real samples will not be ordered based on such an index. Therefore, we remove the variable X from all sets before building the models:
+
+```{r,results='markup', message=FALSE,warning=FALSE,cache=TRUE, fig.align='center'}
+building <- subset(building,select = -c(X))
+tune.testing <- subset(tune.testing,select = -c(X))
+validation <- subset(validation,select = -c(X))
+final_testing <- subset(final_testing,select = -c(X))
+```
+
+
+
+
+
+
 # Model training, testing and stacking
 
 # Final model validation: prediction of 20 test cases
