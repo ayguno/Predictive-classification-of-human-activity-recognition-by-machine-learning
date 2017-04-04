@@ -176,4 +176,23 @@ names(final_testing) <- make.names(names(final_testing))
 
 # Model training, testing and stacking
 
+Since this is a very intuitive classification problem and there are clear non-linear trends/structures/clusters in the data, we will build tree-based classifiers and support vector machines to perform predictions.
+
+We will first build stand-alone classifiers, then stack them by using the respective algorithms. We will evaluate the predictive performance of the individual as well as the stacked classifiers by using the validation data set.
+
+###Cross validation statement
+
+In order to avoid overfitting of the classifiers, we will perform 10-fold cross-validation while building each individual classifier, as well as when stacking them together. Given the high number of dimensions - high number of features in the data set, this incorporates a substantial computational expense to build our classifiers. However, this was necessary to obtain the high accuracy and sucessfull classifiers as demonstrated below. 
+
+## Building Individual classifiers:
+
+**Simple classification tree (method = "rpart") with cross validation:**
+
+```{r,results='markup', message=FALSE,warning=FALSE, cache=TRUE,eval=FALSE}
+set.seed(125745)
+RPART <- train(classe ~ ., data = building,method = "rpart", trControl = trainControl(method = "cv", number = 10))
+saveRDS(RPART,"RPART.rds") #Save model object for future loading if necessary
+```
+
+
 # Final model validation: prediction of 20 test cases
