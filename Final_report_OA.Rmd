@@ -86,8 +86,46 @@ Therefore, drop the missing value containing columns as they unlikely to contrib
 nsv <- nearZeroVar(x = building, saveMetrics = TRUE)
 sum(!nsv$nzv)  
 ```
-59 of of 93 remaining featured have non-zero variance and will be kept in the building set.
+59 of the 93 remaining features have non-zero variance and will be kept the data sets.
+```{r,results='markup', message=FALSE,warning=FALSE,cache=TRUE}
+tune.testing <- tune.testing[,!nsv$nzv]
+validation <- validation[,!nsv$nzv]
+final_testing <- final_testing[,!nsv$nzv]
+building <- building[,!nsv$nzv] 
+```
 
+## Exploratory data analysis
+
+####Investigating collinear features
+
+```{r,results='markup', message=FALSE,warning=FALSE,cache=TRUE}
+cont <- !sapply(building,is.factor) # Continuous variables in the building set
+M <- abs(cor(building[,cont])) # M is an absolute value correlation matrix representing the pairwise #correlations between all continuous variables 
+diag(M) <- 0 # We replace the diagonal values with zero (just because these are the correations with  #themselves we are not interested in capturing them).
+which(M > 0.8, arr.ind = TRUE) # What are the highest correated variables?
+unique(row.names(which(M > 0.8, arr.ind = TRUE)))  
+```
+
+We find that there are 18 highly correlated predictiors in the data set. If we further explore one of them:
+
+```{r,results='markup', message=FALSE,warning=FALSE,cache=TRUE, fig.align='center'}
+qplot(building[,row.names(M)[7]],building[,colnames(M)[5]], color = classe, data = building)+theme_bw()
+```
+
+#### Principal components analysis (PCA)
+
+We perform PCA to see if dimension reduction might help to resolve classes in the case of collinear features:
+
+```{r,results='markup', message=FALSE,warning=FALSE,cache=TRUE, fig.align='center'}
+cor.variables <- building[,unique(row.names(which(M > 0.8, arr.ind = TRUE)))]
+cor.variables$classe <- building$classe
+
+prePCA <- preProcess(cor.variables[,-19],method = "pca")
+PCAcor <- predict(prePCA,cor.variables[,-19])
+qplot(PCAcor$PC1,PCAcor$PC2, color = classe, data = cor.variables) +theme_bw()
+```
+
+We concluded that there is no obvious advantage gained by calculating principal components for the collinear features. Importantly, we notice that the correlated predictors have already clusters within them. In this case, we will not attempt further dimension reduction, because the data looks like suitable for classification algorithms (rather than linear models).
 
 # Model training, testing and stacking
 
