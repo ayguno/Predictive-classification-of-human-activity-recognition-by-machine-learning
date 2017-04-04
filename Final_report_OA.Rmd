@@ -219,7 +219,15 @@ saveRDS(GBM,"GBM.rds") #Save model object for future loading if necessary
 set.seed(125745)
 SVM <- train(classe ~ ., data = building,method = "svmRadial", trControl = trainControl(method = "cv", number = 10))
 # Takes very long time to run!!
-saveRDS(SVM,"SVM.rds")
+saveRDS(SVM,"SVM.rds")#Save model object for future loading if necessary
+```
+
+**Loading back the earlier classifiers:**
+```{r,results='markup',message=FALSE,warning=FALSE, cache=TRUE}
+ RPART = readRDS("RPART.rds")
+ RF = readRDS("RF.rds")
+ GBM = readRDS("GBM.rds")
+ SVM = readRDS("SVM.rds")
 ```
 
 Summarizing the in-sample accuracies from the individual classifiers:
