@@ -4,3 +4,14 @@ author: "Ozan Aygun"
 date: "4/3/2017"
 output: html_document
 ---
+
+# Summary
+
+
+# Data loading and partitioning
+
+# Data cleaning, dimension reduction and exploratory analysis
+
+# Model training, testing and stacking
+
+# Final model validation: prediction of 20 test cases
