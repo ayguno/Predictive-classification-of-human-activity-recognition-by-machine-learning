@@ -71,6 +71,22 @@ table(building$classe[is.na(building$amplitude_pitch_forearm)])/table(building$c
 ```
 The missing values seem to be balanced between the classes, similar fraction of classes are contained in missing values.
 
+Therefore, drop the missing value containing columns as they unlikely to contribute our predictive power.
+```{r,results='markup', message=FALSE,warning=FALSE,cache=TRUE}
+tune.testing <- tune.testing[,-which(apply(is.na(building),2,sum)>0)]
+validation <- validation[,-which(apply(is.na(building),2,sum)>0)]
+final_testing <- final_testing[,-which(apply(is.na(building),2,sum)>0)]
+building <- building[,-which(apply(is.na(building),2,sum)>0)]
+```
+
+## STEP 2: Remove near-zero variance features
+
+Therefore, drop the missing value containing columns as they unlikely to contribute our predictive power.
+```{r,results='markup', message=FALSE,warning=FALSE,cache=TRUE}
+nsv <- nearZeroVar(x = building, saveMetrics = TRUE)
+sum(!nsv$nzv)  
+```
+59 of of 93 remaining featured have non-zero variance and will be kept in the building set.
 
 
 # Model training, testing and stacking
