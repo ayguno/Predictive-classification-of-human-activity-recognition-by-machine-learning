@@ -21,7 +21,7 @@ download.file(fileURLTest,"test.csv")
 
 Load the datasets:
 
-```{r,results='markup',eval=FALSE}
+```{r,results='markup'}
 training <- read.csv("train.csv")
 final_testing <- read.csv("test.csv")
 ```
@@ -207,7 +207,7 @@ RF <- train(classe ~ ., data = building,method = "rf", trControl = trainControl(
 saveRDS(RF,"RF.rds") #Save model object for future loading if necessary
 ```
 
-**Boosted tree (method = "gbm") with cross validation**
+**Gradient boosted tree (method = "gbm") with cross validation**
 ```{r,results='markup', message=FALSE,warning=FALSE, cache=TRUE,eval=FALSE}
 set.seed(125745)
 GBM <- train(classe ~ ., data = building,method = "gbm", trControl = trainControl(method = "cv", number = 10), verbose = FALSE) # Takes very long time to run!!
@@ -275,7 +275,6 @@ stacked.model.svm <- train(classe ~ ., method = "svmRadial", data = tune.testing
 
 stacked.model.gbm <- train(classe ~ ., method = "gbm", data = tune.testing.predictions,trControl = trainControl(method = "cv", number = 10), verbose = FALSE )
 
-
 # Using resamples function from the caret package to summarize the data
 stacked.modelsummary <- resamples(list(RPART=stacked.model.rpart,RF=stacked.model.rf,GBM=stacked.model.gbm ,SVM=stacked.model.svm))
 
@@ -286,6 +285,62 @@ summary(stacked.modelsummary)$statistics$Accuracy
 
 ## Making independent predictions by using all individual and stacked classifiers and the validation set
 
+```{r,results= 'markup', message=FALSE,warning=FALSE, cache=TRUE}
+
+# Individual model predictions by using the validation data set
+pred.validation.RPART <- predict(RPART,newdata = validation)
+pred.validation.RF <- predict(RF,newdata = validation)
+pred.validation.SVM <- predict(SVM,newdata = validation)
+pred.validation.GBM <- predict(GBM,newdata = validation)
+
+# Stacked model predictions by using the validation data set:
+# First, combine the predictions of the individual classifiers from the validation set:
+validation.predictions <-data.frame(pred.tune.RPART = pred.validation.RPART, 
+                                      pred.tune.RF = pred.validation.RF,
+                                      pred.tune.SVM=pred.validation.SVM,
+                                      pred.tune.GBM = pred.validation.GBM)
+
+# Then use the stacked classifiers to perform independent predictions in this new data set:
+pred.validation.Stacked.RPART <- predict(stacked.model.rpart,newdata = validation.predictions)
+pred.validation.Stacked.RF <- predict(stacked.model.rf,newdata = validation.predictions)
+pred.validation.Stacked.SVM <- predict(stacked.model.svm,newdata = validation.predictions)
+pred.validation.Stacked.GBM <- predict(stacked.model.gbm,newdata = validation.predictions)
 
 
-# Final model validation: prediction of 20 test cases
+# Collect accuracy values in a data.frame:
+collected.validation.predictions<-data.frame(pred.validation.RPART,pred.validation.RF,pred.validation.SVM,pred.validation.GBM,pred.validation.Stacked.RPART,pred.validation.Stacked.RF,pred.validation.Stacked.SVM,pred.validation.Stacked.GBM)
+
+validation.accuracy <- apply(collected.validation.predictions, 2, function(x){
+        temp=confusionMatrix(x,validation$classe)$overall[1]
+        names(temp) <- names(x)
+        return(temp)
+})
+
+print(validation.accuracy)
+
+```
+
+We found that the combinations of the individual models stacked by SVM and GBM further increased the overall accuracy of the predictions. However, they did not go beyond the accuracy level of the stand alone Random Forest classifier.
+
+## Variable importances for the selected Random Forest classifier 
+
+We further explored the relative importance of the available features for building the random forest classifier.
+
+```{r,results='markup', message=FALSE,warning=FALSE,cache=TRUE, fig.align='center'}
+dotPlot(varImp(RF), main = "Random forest classifier feature importance")
+```
+We noticed that the *raw_timestamp_part1* feature appears to be the most important for the performance of the random forest classifier. 
+
+Therefore, we concluded that the stand alone Random Forest classifier we build provides the best predictive performance. We will perform the predictions on the final_testing data set by using this classifier.
+
+# Final model evaluation: prediction of 20 test cases
+
+Finally, we tested the prediction accuracy of our best classifier by performing a one-time test using the final_testing set:
+
+```{r,results= 'markup', message=FALSE,warning=FALSE, cache=TRUE,eval=FALSE}
+final.prediction.RF <- predict(RF,newdata = final_testing)
+```
+
+By comparing the 20 predicted classes to the actual class labels (**data not shown**), we found that the random forest classifier was able to correctly classify all 20 cases (**100% accuracy**). The code provided in this analysis report is sufficient to reproduce and confirm these findings.
+
+
