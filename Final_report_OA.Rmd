@@ -178,6 +178,13 @@ names(final_testing) <- make.names(names(final_testing))
 
 Since this is a very intuitive classification problem and there are clear non-linear trends/structures/clusters in the data, we will build tree-based classifiers and support vector machines to perform predictions.
 
+These classifiers will be:
+
+- Classification decision tree
+- Random Forest
+- Gradient Boosted tree
+- Support vector machnines with a radial kernel 
+
 We will first build stand-alone classifiers, then stack them by using the respective algorithms. We will evaluate the predictive performance of the individual as well as the stacked classifiers by using the validation data set.
 
 ###Cross validation statement
@@ -187,7 +194,6 @@ In order to avoid overfitting of the classifiers, we will perform 10-fold cross-
 ## Building Individual classifiers:
 
 **Simple classification tree (method = "rpart") with cross validation:**
-
 ```{r,results='markup', message=FALSE,warning=FALSE, cache=TRUE,eval=FALSE}
 set.seed(125745)
 RPART <- train(classe ~ ., data = building,method = "rpart", trControl = trainControl(method = "cv", number = 10))
@@ -195,13 +201,58 @@ saveRDS(RPART,"RPART.rds") #Save model object for future loading if necessary
 ```
 
 **Random Forest (method = "cv") with cross validation**
-
 ```{r,results='markup', message=FALSE,warning=FALSE, cache=TRUE,eval=FALSE}
 set.seed(125745)
-RF <- train(classe ~ ., data = building,method = "rf", trControl = trainControl(method = "cv", number = 10)) # Takes very long time to run!!
+RF <- train(classe ~ ., data = building,method = "rf", trControl = trainControl(method = "cv", number = 10))  #Takes very long time to run!!
 saveRDS(RF,"RF.rds") #Save model object for future loading if necessary
-
 ```
+
+**Boosted tree (method = "gbm") with cross validation**
+```{r,results='markup', message=FALSE,warning=FALSE, cache=TRUE,eval=FALSE}
+set.seed(125745)
+GBM <- train(classe ~ ., data = building,method = "gbm", trControl = trainControl(method = "cv", number = 10), verbose = FALSE) # Takes very long time to run!!
+saveRDS(GBM,"GBM.rds") #Save model object for future loading if necessary
+```
+
+**support vector machines with a radial kernel**
+```{r,results='markup', message=FALSE,warning=FALSE, cache=TRUE, eval=FALSE}
+set.seed(125745)
+SVM <- train(classe ~ ., data = building,method = "svmRadial", trControl = trainControl(method = "cv", number = 10))
+# Takes very long time to run!!
+saveRDS(SVM,"SVM.rds")
+```
+
+Summarizing the in-sample accuracies from the individual classifiers:
+
+```{r,results='markup', message=FALSE,warning=FALSE, cache=TRUE}
+# Using resamples function from the caret package to summarize the data
+modelsummary <- resamples(list(RPART=RPART,RF=RF,GBM=GBM,SVM=SVM))
+# In-sample accuracy values for each model
+summary(modelsummary)$statistics$Accuracy
+```
+
+We notice that 3 out of the 4 classifiers we build perform quite well in the building set.
+
+## Making independent predictions by using the individual classifiers and tune.testing set
+
+```{r,results= 'markup', message=FALSE,warning=FALSE, cache=TRUE}
+# Make independent predictions
+pred.tune.RPART <- predict(RPART,newdata = tune.testing)
+pred.tune.RF <- predict(RF,newdata = tune.testing)
+pred.tune.SVM <- predict(SVM,newdata = tune.testing)
+pred.tune.GBM <- predict(GBM,newdata = tune.testing)
+
+# Collect accuracy values in a data.frame:
+tune.testing.predictions <-data.frame(pred.tune.RPART,pred.tune.RF,pred.tune.SVM,pred.tune.GBM)
+
+tune.testing.accuracy <- apply(tune.testing.predictions, 2, function(x){
+        temp=confusionMatrix(x,tune.testing$classe)$overall[1]
+        names(temp) <- names(x)
+        return(temp)
+})
+print(tune.testing.accuracy )
+```
+Based on the independent prediction in the tune.testing set, Random Forest classification tree gave the highest accuracy. The accuracy is remarkable (0.9989). Boosted tree also gave a comparable accuracy.
 
 
 # Final model validation: prediction of 20 test cases
