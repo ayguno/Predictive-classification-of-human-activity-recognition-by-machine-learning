@@ -61,7 +61,6 @@ Note that classes are slightly unbalanced, we have more of class A.
 
 ```{r,results='markup', message=FALSE,warning=FALSE,cache=TRUE}
 table(building$classe) 
-apply(is.na(building),2,sum)
 length(which(apply(is.na(building),2,sum)>0)) 
 ```
 
@@ -103,13 +102,15 @@ building <- building[,!nsv$nzv]
 cont <- !sapply(building,is.factor) # Continuous variables in the building set
 M <- abs(cor(building[,cont])) # M is an absolute value correlation matrix representing the pairwise #correlations between all continuous variables 
 diag(M) <- 0 # We replace the diagonal values with zero (just because these are the correations with  #themselves we are not interested in capturing them).
-which(M > 0.8, arr.ind = TRUE) # What are the highest correated variables?
-unique(row.names(which(M > 0.8, arr.ind = TRUE)))  
+head(which(M > 0.8, arr.ind = TRUE)) # What are the highest correated variables?
+head(unique(row.names(which(M > 0.8, arr.ind = TRUE))))
+length(unique(row.names(which(M > 0.8, arr.ind = TRUE))))
 ```
 
 We find that there are 18 highly correlated predictiors in the data set. If we further explore one of them:
 
-```{r,results='markup', message=FALSE,warning=FALSE,cache=TRUE, fig.align='center'}
+```{r,results='markup', message=FALSE,warning=FALSE, fig.align='center',fig.width=4,fig.height=3}
+library(ggplot2)
 qplot(building[,row.names(M)[7]],building[,colnames(M)[5]], color = classe, data = building)+theme_bw()
 ```
 
@@ -117,7 +118,8 @@ qplot(building[,row.names(M)[7]],building[,colnames(M)[5]], color = classe, data
 
 We perform PCA to see if dimension reduction might help to resolve classes in the case of collinear features:
 
-```{r,results='markup', message=FALSE,warning=FALSE,cache=TRUE, fig.align='center'}
+```{r,results='markup', message=FALSE,warning=FALSE,fig.width=4,fig.height=3, fig.align='center'}
+library(caret)
 cor.variables <- building[,unique(row.names(which(M > 0.8, arr.ind = TRUE)))]
 cor.variables$classe <- building$classe
 
@@ -151,7 +153,7 @@ final_testing <- cbind(final_testing[,-factors],predict(dummies,final_testing))
 
 We notice that the variable X is just an indexing variable that can *perfectly* seperate the classes:
 
-```{r,results='markup', message=FALSE,warning=FALSE,cache=TRUE, fig.align='center'}
+```{r,results='markup', message=FALSE,warning=FALSE,fig.width=4,fig.height=3, fig.align='center'}
 qplot(X,classe,data = building,color = classe)+theme_bw()
 ```
 
@@ -335,7 +337,7 @@ We found that the combinations of the individual models stacked by SVM and GBM f
 
 We further explored the relative importance of the available features for building the random forest classifier.
 
-```{r,results='markup', message=FALSE,warning=FALSE,cache=TRUE, fig.align='center'}
+```{r,results='markup', message=FALSE,warning=FALSE,fig.width=5,fig.height=3, fig.align='center'}
 dotPlot(varImp(RF), main = "Random forest classifier feature importance")
 ```
 We noticed that the *raw_timestamp_part1* feature appears to be the most important for the performance of the random forest classifier. 
