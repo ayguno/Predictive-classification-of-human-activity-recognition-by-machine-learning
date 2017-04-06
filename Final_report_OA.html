@@ -347,19 +347,13 @@ print(tune.testing.accuracy )</code></pre>
 <pre class="r"><code># Add the outcome variable to the tune.testing predictions of the individual classifiers above
 set.seed(125745)
 tune.testing.predictions$classe &lt;- tune.testing$classe
-
 # Train stacked classifiers by using 4 algorithms using the tune.testing predictions data set
 stacked.model.rpart &lt;- train(classe ~ ., method = &quot;rpart&quot;, data = tune.testing.predictions,trControl = trainControl(method = &quot;cv&quot;, number = 10) )
-
 stacked.model.rf &lt;- train(classe ~ ., method = &quot;rf&quot;, data = tune.testing.predictions,trControl = trainControl(method = &quot;cv&quot;, number = 10) )
-
 stacked.model.svm &lt;- train(classe ~ ., method = &quot;svmRadial&quot;, data = tune.testing.predictions,trControl = trainControl(method = &quot;cv&quot;, number = 10) )
-
 stacked.model.gbm &lt;- train(classe ~ ., method = &quot;gbm&quot;, data = tune.testing.predictions,trControl = trainControl(method = &quot;cv&quot;, number = 10), verbose = FALSE )
-
 # Using resamples function from the caret package to summarize the data
 stacked.modelsummary &lt;- resamples(list(RPART=stacked.model.rpart,RF=stacked.model.rf,GBM=stacked.model.gbm ,SVM=stacked.model.svm))
-
 # In-sample accuracy values for each model
 summary(stacked.modelsummary)$statistics$Accuracy</code></pre>
 <pre><code>##         Min. 1st Qu. Median   Mean 3rd Qu.   Max. NA's
@@ -375,30 +369,24 @@ pred.validation.RPART &lt;- predict(RPART,newdata = validation)
 pred.validation.RF &lt;- predict(RF,newdata = validation)
 pred.validation.SVM &lt;- predict(SVM,newdata = validation)
 pred.validation.GBM &lt;- predict(GBM,newdata = validation)
-
 # Stacked model predictions by using the validation data set:
 # First, combine the predictions of the individual classifiers from the validation set:
 validation.predictions &lt;-data.frame(pred.tune.RPART = pred.validation.RPART, 
                                       pred.tune.RF = pred.validation.RF,
                                       pred.tune.SVM=pred.validation.SVM,
                                       pred.tune.GBM = pred.validation.GBM)
-
 # Then use the stacked classifiers to perform independent predictions in this new data set:
 pred.validation.Stacked.RPART &lt;- predict(stacked.model.rpart,newdata = validation.predictions)
 pred.validation.Stacked.RF &lt;- predict(stacked.model.rf,newdata = validation.predictions)
 pred.validation.Stacked.SVM &lt;- predict(stacked.model.svm,newdata = validation.predictions)
 pred.validation.Stacked.GBM &lt;- predict(stacked.model.gbm,newdata = validation.predictions)
-
-
 # Collect accuracy values in a data.frame:
 collected.validation.predictions&lt;-data.frame(pred.validation.RPART,pred.validation.RF,pred.validation.SVM,pred.validation.GBM,pred.validation.Stacked.RPART,pred.validation.Stacked.RF,pred.validation.Stacked.SVM,pred.validation.Stacked.GBM)
-
 validation.accuracy &lt;- apply(collected.validation.predictions, 2, function(x){
         temp=confusionMatrix(x,validation$classe)$overall[1]
         names(temp) &lt;- names(x)
         return(temp)
 })
-
 print(validation.accuracy)</code></pre>
 <pre><code>##         pred.validation.RPART            pred.validation.RF 
 ##                     0.4934999                     0.9982157 

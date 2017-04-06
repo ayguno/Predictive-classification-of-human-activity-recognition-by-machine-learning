@@ -21,7 +21,6 @@ download.file(fileURLTest,"test.csv")
 ```
 
 Load the datasets:
-
 ```{r,results='markup'}
 training <- read.csv("train.csv")
 final_testing <- read.csv("test.csv")
@@ -270,67 +269,50 @@ Based on the independent prediction in the tune.testing set, Random Forest class
 At this stage we will carry over the predictions of the individual models above and see if we can stack combinations of these models to further improve the accuracy.
 
 To this end, we will combine each classifier we built above, by using the 4 classification algorithms we used. 
-
 ```{r,results='markup', message=FALSE,warning=FALSE, cache=TRUE}
 
 # Add the outcome variable to the tune.testing predictions of the individual classifiers above
 set.seed(125745)
 tune.testing.predictions$classe <- tune.testing$classe
-
 # Train stacked classifiers by using 4 algorithms using the tune.testing predictions data set
 stacked.model.rpart <- train(classe ~ ., method = "rpart", data = tune.testing.predictions,trControl = trainControl(method = "cv", number = 10) )
-
 stacked.model.rf <- train(classe ~ ., method = "rf", data = tune.testing.predictions,trControl = trainControl(method = "cv", number = 10) )
-
 stacked.model.svm <- train(classe ~ ., method = "svmRadial", data = tune.testing.predictions,trControl = trainControl(method = "cv", number = 10) )
-
 stacked.model.gbm <- train(classe ~ ., method = "gbm", data = tune.testing.predictions,trControl = trainControl(method = "cv", number = 10), verbose = FALSE )
-
 # Using resamples function from the caret package to summarize the data
 stacked.modelsummary <- resamples(list(RPART=stacked.model.rpart,RF=stacked.model.rf,GBM=stacked.model.gbm ,SVM=stacked.model.svm))
-
 # In-sample accuracy values for each model
 summary(stacked.modelsummary)$statistics$Accuracy
-
 ```
 
 ## Making independent predictions by using all individual and stacked classifiers and the validation set
 
 ```{r,results= 'markup', message=FALSE,warning=FALSE, cache=TRUE}
-
 # Individual model predictions by using the validation data set
 pred.validation.RPART <- predict(RPART,newdata = validation)
 pred.validation.RF <- predict(RF,newdata = validation)
 pred.validation.SVM <- predict(SVM,newdata = validation)
 pred.validation.GBM <- predict(GBM,newdata = validation)
-
 # Stacked model predictions by using the validation data set:
 # First, combine the predictions of the individual classifiers from the validation set:
 validation.predictions <-data.frame(pred.tune.RPART = pred.validation.RPART, 
                                       pred.tune.RF = pred.validation.RF,
                                       pred.tune.SVM=pred.validation.SVM,
                                       pred.tune.GBM = pred.validation.GBM)
-
 # Then use the stacked classifiers to perform independent predictions in this new data set:
 pred.validation.Stacked.RPART <- predict(stacked.model.rpart,newdata = validation.predictions)
 pred.validation.Stacked.RF <- predict(stacked.model.rf,newdata = validation.predictions)
 pred.validation.Stacked.SVM <- predict(stacked.model.svm,newdata = validation.predictions)
 pred.validation.Stacked.GBM <- predict(stacked.model.gbm,newdata = validation.predictions)
-
-
 # Collect accuracy values in a data.frame:
 collected.validation.predictions<-data.frame(pred.validation.RPART,pred.validation.RF,pred.validation.SVM,pred.validation.GBM,pred.validation.Stacked.RPART,pred.validation.Stacked.RF,pred.validation.Stacked.SVM,pred.validation.Stacked.GBM)
-
 validation.accuracy <- apply(collected.validation.predictions, 2, function(x){
         temp=confusionMatrix(x,validation$classe)$overall[1]
         names(temp) <- names(x)
         return(temp)
 })
-
 print(validation.accuracy)
-
 ```
-
 We found that the combinations of the individual models stacked by SVM and GBM further increased the overall accuracy of the predictions. However, they did not go beyond the accuracy level of the stand alone Random Forest classifier.
 
 ## Variable importances for the selected Random Forest classifier 
