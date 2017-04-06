@@ -109,9 +109,9 @@ length(unique(row.names(which(M > 0.8, arr.ind = TRUE))))
 
 We find that there are 18 highly correlated predictiors in the data set. If we further explore one of them:
 
-```{r,results='markup', message=FALSE,warning=FALSE, fig.align='center',fig.width=4,fig.height=3}
-library(ggplot2)
-qplot(building[,row.names(M)[7]],building[,colnames(M)[5]], color = classe, data = building)+theme_bw()
+```{r,results='markup', message=FALSE,warning=FALSE, fig.align='center',fig.width=4,fig.height=4}
+# library(ggplot2)
+# qplot(building[,row.names(M)[7]],building[,colnames(M)[5]], color = classe, data = building)+theme_bw()
 ```
 
 #### Principal components analysis (PCA)
