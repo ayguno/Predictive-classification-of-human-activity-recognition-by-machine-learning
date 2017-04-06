@@ -1,0 +1,333 @@
+---
+title: "Final_report"
+author: "Ozan Aygun"
+date: "4/3/2017"
+output: html_document
+---
+
+# Summary
+
+Here we 
+
+# Data loading and partitioning
+
+Download the data sets:
+
+```{r,results='markup',eval=FALSE}
+fileURLTrain <- "https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv"
+fileURLTest <- "https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv"
+download.file(fileURLTrain,"train.csv")
+download.file(fileURLTest,"test.csv")
+```
+
+Load the datasets:
+```{r,results='markup'}
+training <- read.csv("train.csv")
+final_testing <- read.csv("test.csv")
+```
+
+Understanding the classes:
+
+Based on the original data description, we notice that the **classe** variable is the outcome variable representing: exactly according to the specification (Class A), throwing the elbows to the front (Class B), lifting the dumbbell only halfway (Class C), lowering the dumbbell only halfway (Class D) and throwing the hips to the front (Class E). Class A corresponds to the specified execution of the exercise, while the other 4 classes correspond to common mistakes.
+
+We will use the training set to build a predictive model in order to classify the cases in the final_testing set.
+
+We therefore partition the **training set** into:
+
+- **building**: actual model building set
+- **tune.testing**: testing set for tuning the build models
+- **validation**: for one-time evaluation of the model performance
+
+```{r,results='markup', message=FALSE,warning=FALSE,cache=TRUE}
+library(caret);library(ggplot2); set.seed(23445)
+INbuilding <- createDataPartition(y = training$classe,p=0.6,list = FALSE)
+building <- training[INbuilding,]
+
+rest <- training[-INbuilding,]
+
+INtune <- createDataPartition(y = rest$classe,p=0.5,list = FALSE)
+tune.testing <- rest[INtune,]
+validation <- rest[-INtune,]
+```
+
+# Data cleaning, dimension reduction and exploratory analysis
+
+** All data processing and exploration initially performed in the building set, then exactly applied to tune.testing,validation, and final_testing sets with the same parameters.**
+
+## STEP1: Handling missing values
+
+Note that classes are slightly unbalanced, we have more of class A.
+
+```{r,results='markup', message=FALSE,warning=FALSE,cache=TRUE}
+table(building$classe) 
+length(which(apply(is.na(building),2,sum)>0)) 
+```
+
+Note that 11548 data points (98% of them) are consistently missing in 67 variables. 
+
+```{r,results='markup', message=FALSE,warning=FALSE,cache=TRUE}
+table(building$classe[is.na(building$amplitude_pitch_forearm)])/table(building$classe) 
+```
+The missing values seem to be balanced between the classes, similar fraction of classes are contained in missing values.
+
+Therefore, drop the missing value containing columns as they unlikely to contribute our predictive power.
+```{r,results='markup', message=FALSE,warning=FALSE,cache=TRUE}
+tune.testing <- tune.testing[,-which(apply(is.na(building),2,sum)>0)]
+validation <- validation[,-which(apply(is.na(building),2,sum)>0)]
+final_testing <- final_testing[,-which(apply(is.na(building),2,sum)>0)]
+building <- building[,-which(apply(is.na(building),2,sum)>0)]
+```
+
+## STEP 2: Remove near-zero variance features
+
+Therefore, drop the missing value containing columns as they unlikely to contribute our predictive power.
+```{r,results='markup', message=FALSE,warning=FALSE,cache=TRUE}
+nsv <- nearZeroVar(x = building, saveMetrics = TRUE)
+sum(!nsv$nzv)  
+```
+59 of the 93 remaining features have non-zero variance and will be kept the data sets.
+```{r,results='markup', message=FALSE,warning=FALSE,cache=TRUE}
+tune.testing <- tune.testing[,!nsv$nzv]
+validation <- validation[,!nsv$nzv]
+final_testing <- final_testing[,!nsv$nzv]
+building <- building[,!nsv$nzv] 
+```
+
+## Exploratory data analysis
+
+####Investigating collinear features
+
+```{r,results='markup', message=FALSE,warning=FALSE,cache=TRUE}
+cont <- !sapply(building,is.factor) # Continuous variables in the building set
+M <- abs(cor(building[,cont])) # M is an absolute value correlation matrix representing the pairwise #correlations between all continuous variables 
+diag(M) <- 0 # We replace the diagonal values with zero (just because these are the correations with  #themselves we are not interested in capturing them).
+head(which(M > 0.8, arr.ind = TRUE)) # What are the highest correated variables?
+head(unique(row.names(which(M > 0.8, arr.ind = TRUE))))
+length(unique(row.names(which(M > 0.8, arr.ind = TRUE))))
+```
+We find that there are 18 highly correlated predictiors in the data set. 
+
+#### Principal components analysis (PCA)
+
+We perform PCA to see if dimension reduction might help to resolve classes in the case of collinear features:
+
+```{r,results='markup', message=FALSE,warning=FALSE,fig.width=3,fig.height=2, fig.align='center'}
+library(caret)
+cor.variables <- building[,unique(row.names(which(M > 0.8, arr.ind = TRUE)))]
+cor.variables$classe <- building$classe
+
+prePCA <- preProcess(cor.variables[,-19],method = "pca")
+PCAcor <- predict(prePCA,cor.variables[,-19])
+qplot(PCAcor$PC1,PCAcor$PC2, color = classe, data = cor.variables) +theme_bw()
+```
+
+We concluded that there is no obvious advantage gained by calculating principal components for the collinear features. Importantly, we notice that the correlated predictors have already clusters within them. In this case, we will not attempt further dimension reduction, because the data looks like suitable for classification algorithms (rather than linear models).
+
+## STEP3: Feature engineering
+
+Converting factor variables into dummy variables. 
+
+```{r,results='markup', message=FALSE,warning=FALSE,cache=TRUE, fig.align='center'}
+which(sapply(building[,-59],is.factor)) # Only two factor variables remained in the datasets
+# Note that one of them is a time stamp composed of 20 unique values. At this point we will model them as #categorical variables
+factors <- which(sapply(building[,-59],is.factor))
+# Convert these variables into dummy variables:
+dummies <- dummyVars(classe ~ user_name + cvtd_timestamp, data = building)
+
+# Add them into building and all test and validation sets and drop the original factor variables
+building <- cbind(building[,-factors],predict(dummies,building))
+tune.testing <- cbind(tune.testing[,-factors],predict(dummies,tune.testing))
+validation <- cbind(validation[,-factors],predict(dummies,validation))
+names(final_testing)[59] <- "classe" # Names in newdata should match the object to use predict( ) function
+final_testing <- cbind(final_testing[,-factors],predict(dummies,final_testing))
+```
+
+## STEP4: Eliminating the bias from the indexing variable X
+
+We notice that the variable X is just an indexing variable that can *perfectly* seperate the classes:
+
+```{r,results='markup', message=FALSE,warning=FALSE,fig.width=4,fig.height=3, fig.align='center'}
+qplot(X,classe,data = building,color = classe)+theme_bw()
+```
+
+Such a variable has no real predictive power because the real samples will not be ordered based on such an index. Therefore, we remove the variable X from all sets before building the models:
+
+```{r,results='markup', message=FALSE,warning=FALSE,cache=TRUE, fig.align='center'}
+building <- subset(building,select = -c(X))
+tune.testing <- subset(tune.testing,select = -c(X))
+validation <- subset(validation,select = -c(X))
+final_testing <- subset(final_testing,select = -c(X))
+```
+
+## STEP5 : legitimize the feature names
+
+When performing feature creation, particularly for the creation of the dummy variables, we generated complex feature names. The classification algorithms in R can not handle such comples feature names that contains special characters such as **"/"**. Therefore, we legitimize all feature names before model training:
+
+```{r,results='markup', message=FALSE,warning=FALSE,cache=TRUE, fig.align='center'}
+names(building) <- make.names(names(building))
+names(tune.testing) <- make.names(names(tune.testing))
+names(validation) <- make.names(names(validation))
+names(final_testing) <- make.names(names(final_testing))
+```
+
+# Model training, testing and stacking
+
+Since this is a very intuitive classification problem and there are clear non-linear trends/structures/clusters in the data, we will build tree-based classifiers and support vector machines to perform predictions.
+
+These classifiers will be:
+
+- Classification decision tree
+- Random Forest
+- Gradient Boosted tree
+- Support vector machnines with a radial kernel 
+
+We will first build stand-alone classifiers, then stack them by using the respective algorithms. We will evaluate the predictive performance of the individual as well as the stacked classifiers by using the validation data set.
+
+###Cross validation statement
+
+In order to avoid overfitting of the classifiers, we will perform 10-fold cross-validation while building each individual classifier, as well as when stacking them together. Given the high number of dimensions - high number of features in the data set, this incorporates a substantial computational expense to build our classifiers. However, this was necessary to obtain the high accuracy and sucessfull classifiers as demonstrated below. 
+
+## Building Individual classifiers:
+
+**Simple classification tree (method = "rpart") with cross validation:**
+```{r,results='markup', message=FALSE,warning=FALSE, cache=TRUE,eval=FALSE}
+set.seed(125745)
+RPART <- train(classe ~ ., data = building,method = "rpart", trControl = trainControl(method = "cv", number = 10))
+saveRDS(RPART,"RPART.rds") #Save model object for future loading if necessary
+```
+
+**Random Forest (method = "cv") with cross validation**
+```{r,results='markup', message=FALSE,warning=FALSE, cache=TRUE,eval=FALSE}
+set.seed(125745)
+RF <- train(classe ~ ., data = building,method = "rf", trControl = trainControl(method = "cv", number = 10))  #Takes very long time to run!!
+saveRDS(RF,"RF.rds") #Save model object for future loading if necessary
+```
+
+**Gradient boosted tree (method = "gbm") with cross validation**
+```{r,results='markup', message=FALSE,warning=FALSE, cache=TRUE,eval=FALSE}
+set.seed(125745)
+GBM <- train(classe ~ ., data = building,method = "gbm", trControl = trainControl(method = "cv", number = 10), verbose = FALSE) # Takes very long time to run!!
+saveRDS(GBM,"GBM.rds") #Save model object for future loading if necessary
+```
+
+**support vector machines with a radial kernel**
+```{r,results='markup', message=FALSE,warning=FALSE, cache=TRUE, eval=FALSE}
+set.seed(125745)
+SVM <- train(classe ~ ., data = building,method = "svmRadial", trControl = trainControl(method = "cv", number = 10))
+# Takes very long time to run!!
+saveRDS(SVM,"SVM.rds")#Save model object for future loading if necessary
+```
+
+**Loading back the earlier classifiers:**
+```{r,results='markup',message=FALSE,warning=FALSE, cache=TRUE}
+ RPART = readRDS("RPART.rds")
+ RF = readRDS("RF.rds")
+ GBM = readRDS("GBM.rds")
+ SVM = readRDS("SVM.rds")
+```
+
+Summarizing the in-sample accuracies from the individual classifiers:
+
+```{r,results='markup', message=FALSE,warning=FALSE, cache=TRUE}
+# Using resamples function from the caret package to summarize the data
+modelsummary <- resamples(list(RPART=RPART,RF=RF,GBM=GBM,SVM=SVM))
+# In-sample accuracy values for each model
+summary(modelsummary)$statistics$Accuracy
+```
+
+We notice that 3 out of the 4 classifiers we build perform quite well in the building set.
+
+## Making independent predictions by using the individual classifiers and tune.testing set
+
+```{r,results= 'markup', message=FALSE,warning=FALSE, cache=TRUE}
+# Make independent predictions
+pred.tune.RPART <- predict(RPART,newdata = tune.testing)
+pred.tune.RF <- predict(RF,newdata = tune.testing)
+pred.tune.SVM <- predict(SVM,newdata = tune.testing)
+pred.tune.GBM <- predict(GBM,newdata = tune.testing)
+
+# Collect accuracy values in a data.frame:
+tune.testing.predictions <-data.frame(pred.tune.RPART,pred.tune.RF,pred.tune.SVM,pred.tune.GBM)
+
+tune.testing.accuracy <- apply(tune.testing.predictions, 2, function(x){
+        temp=confusionMatrix(x,tune.testing$classe)$overall[1]
+        names(temp) <- names(x)
+        return(temp)
+})
+print(tune.testing.accuracy )
+```
+Based on the independent prediction in the tune.testing set, Random Forest classification tree gave the highest accuracy. The accuracy is remarkable (0.9989). Boosted tree also gave a comparable accuracy.
+
+## Stacking and blending the classifiers
+
+At this stage we will carry over the predictions of the individual models above and see if we can stack combinations of these models to further improve the accuracy.
+
+To this end, we will combine each classifier we built above, by using the 4 classification algorithms we used. 
+```{r,results='markup', message=FALSE,warning=FALSE, cache=TRUE}
+
+# Add the outcome variable to the tune.testing predictions of the individual classifiers above
+set.seed(125745)
+tune.testing.predictions$classe <- tune.testing$classe
+# Train stacked classifiers by using 4 algorithms using the tune.testing predictions data set
+stacked.model.rpart <- train(classe ~ ., method = "rpart", data = tune.testing.predictions,trControl = trainControl(method = "cv", number = 10) )
+stacked.model.rf <- train(classe ~ ., method = "rf", data = tune.testing.predictions,trControl = trainControl(method = "cv", number = 10) )
+stacked.model.svm <- train(classe ~ ., method = "svmRadial", data = tune.testing.predictions,trControl = trainControl(method = "cv", number = 10) )
+stacked.model.gbm <- train(classe ~ ., method = "gbm", data = tune.testing.predictions,trControl = trainControl(method = "cv", number = 10), verbose = FALSE )
+# Using resamples function from the caret package to summarize the data
+stacked.modelsummary <- resamples(list(RPART=stacked.model.rpart,RF=stacked.model.rf,GBM=stacked.model.gbm ,SVM=stacked.model.svm))
+# In-sample accuracy values for each model
+summary(stacked.modelsummary)$statistics$Accuracy
+```
+
+## Making independent predictions by using all individual and stacked classifiers and the validation set
+
+```{r,results= 'markup', message=FALSE,warning=FALSE, cache=TRUE}
+# Individual model predictions by using the validation data set
+pred.validation.RPART <- predict(RPART,newdata = validation)
+pred.validation.RF <- predict(RF,newdata = validation)
+pred.validation.SVM <- predict(SVM,newdata = validation)
+pred.validation.GBM <- predict(GBM,newdata = validation)
+# Stacked model predictions by using the validation data set:
+# First, combine the predictions of the individual classifiers from the validation set:
+validation.predictions <-data.frame(pred.tune.RPART = pred.validation.RPART, 
+                                      pred.tune.RF = pred.validation.RF,
+                                      pred.tune.SVM=pred.validation.SVM,
+                                      pred.tune.GBM = pred.validation.GBM)
+# Then use the stacked classifiers to perform independent predictions in this new data set:
+pred.validation.Stacked.RPART <- predict(stacked.model.rpart,newdata = validation.predictions)
+pred.validation.Stacked.RF <- predict(stacked.model.rf,newdata = validation.predictions)
+pred.validation.Stacked.SVM <- predict(stacked.model.svm,newdata = validation.predictions)
+pred.validation.Stacked.GBM <- predict(stacked.model.gbm,newdata = validation.predictions)
+# Collect accuracy values in a data.frame:
+collected.validation.predictions<-data.frame(pred.validation.RPART,pred.validation.RF,pred.validation.SVM,pred.validation.GBM,pred.validation.Stacked.RPART,pred.validation.Stacked.RF,pred.validation.Stacked.SVM,pred.validation.Stacked.GBM)
+validation.accuracy <- apply(collected.validation.predictions, 2, function(x){
+        temp=confusionMatrix(x,validation$classe)$overall[1]
+        names(temp) <- names(x)
+        return(temp)
+})
+print(validation.accuracy)
+```
+We found that the combinations of the individual models stacked by SVM and GBM further increased the overall accuracy of the predictions. However, they did not go beyond the accuracy level of the stand alone Random Forest classifier.
+
+## Variable importances for the selected Random Forest classifier 
+
+We further explored the relative importance of the available features for building the random forest classifier.
+
+```{r,results='markup', message=FALSE,warning=FALSE,fig.width=5,fig.height=3, fig.align='center'}
+dotPlot(varImp(RF), main = "Random forest classifier feature importance")
+```
+We noticed that the *raw_timestamp_part1* feature appears to be the most important for the performance of the random forest classifier. 
+
+Therefore, we concluded that the stand alone Random Forest classifier we build provides the best predictive performance. We will perform the predictions on the final_testing data set by using this classifier.
+
+# Final model evaluation: prediction of 20 test cases
+
+Finally, we tested the prediction accuracy of our best classifier by performing a one-time test using the final_testing set:
+
+```{r,results= 'markup', message=FALSE,warning=FALSE, cache=TRUE,eval=FALSE}
+final.prediction.RF <- predict(RF,newdata = final_testing)
+```
+
+By comparing the 20 predicted classes to the actual class labels (**data not shown**), we found that the random forest classifier was able to correctly classify all 20 cases (**100% accuracy**). The code provided in this analysis report is sufficient to reproduce and confirm these findings.
+
+
