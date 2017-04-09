@@ -7,7 +7,7 @@ output: html_document
 
 ___
 
-___
+
 Download the data sets:
 
 ```{r,results='markup',eval=FALSE}
