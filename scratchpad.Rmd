@@ -20,6 +20,8 @@ Download the data sets:
 # download.file(fileURLTest,"test.csv")
 ```
 
+___
+
 Load the datasets:
 
 ```{r,results='markup'}
@@ -28,7 +30,7 @@ final_testing <- read.csv("test.csv")
 ```
 
 Understand the variables:
-
+___
 ```{r,results='markup'}
 #nameframe <- data.frame(names(training),names(final_testing))
 ```
