@@ -170,6 +170,8 @@ names(tune.testing) <- make.names(names(tune.testing))
 names(validation) <- make.names(names(validation))
 names(final_testing) <- make.names(names(final_testing))
 ```
+___
+
 
 This concludes data pre-processing and exploratory data analysis. Only the building set was used to perform exploration, then all 4 sets were processed exactly in the same way.
 
