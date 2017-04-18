@@ -214,7 +214,7 @@ SVM <- train(classe ~ ., data = building,method = "svmRadial", trControl = train
 # Takes very long time to run!!
 saveRDS(SVM,"SVM.rds")
 ```
-
+___
 
 # Reading back the earlier classifiers when needed to work with them
 ```{r,results='markup'}
