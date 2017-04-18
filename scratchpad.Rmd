@@ -189,7 +189,7 @@ RPART <- train(classe ~ ., data = building,method = "rpart", trControl = trainCo
 saveRDS(RPART,"RPART.rds") #Save model object for future loading if necessary
 ```
 
-- Random Forest (method = "cv") with cross validation
+- Random Forest (method = "rf") with cross validation
 
 ```{r,results='markup', message=FALSE,warning=FALSE, cache=TRUE}
 set.seed(125745)
