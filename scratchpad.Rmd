@@ -351,7 +351,10 @@ validation.accuracy <- apply(collected.validation.predictions, 2, function(x){
 })
 
 ```
+
 ___
+
+
 We found that the combinations of the individual models stacked by SVM and GBM further increased the overall accuracy of the predictions. However, they did not go beyond the accuracy level of RF function. 
 
 We will perform the predictions on the final_testing data set by using the stand alone RF model:
