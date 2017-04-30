@@ -264,6 +264,9 @@ tune.testing.accuracy <- apply(tune.testing.predictions, 2, function(x){
 ```
 Based on the prediction in the tune.testing set, Random Forest classification tree gave the highest accuracy. The accuracy is remarkable. Boosted tree also gave a comparable accuracy.
 
+___
+
+
 # Stacked classifiers:
 
 
