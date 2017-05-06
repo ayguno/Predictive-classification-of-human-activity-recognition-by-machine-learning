@@ -242,6 +242,8 @@ dotPlot(varImp(GBM))
 ```
 
 ___
+
+
 # Making predictions by using the classifiers and tune.testing set
 
 ```{r,results= 'markup', message=FALSE,warning=FALSE, cache=TRUE}
