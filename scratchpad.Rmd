@@ -225,6 +225,8 @@ ___
  SVM = readRDS("SVM.rds")
 ```
 
+___
+
 # Summarizing the initial results from the individual classifiers
 ```{r,results='markup', message=FALSE,warning=FALSE, cache=TRUE}
 # Using resamples function from the caret package to summarize the data
